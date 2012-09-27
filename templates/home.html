@@ -62,39 +62,81 @@
       <div class="row">
         <div class="span6">
           <h2>Conferencing</h2>
-          <p>Donec id elit non mi porta gravida at eget metus. Fusce dapibus, tellus ac cursus commodo, tortor mauris condimentum nibh, ut fermentum massa justo sit amet risus. Etiam porta sem malesuada magna mollis euismod. Donec sed odio dui. </p>
+          <p>Our conferencing engine is top of the class. This widget is completely built using our APIs and XML. To try it out live, put your number or SIP URI in the field below and hit enter.</p>
           <form class="conference form form-inline">
-              <input type="text" name="number" id="number" class="input-large" placeholder="Number, eg (919986410895)">
-              <button type="submit" class="btn">Put me into conference</button>
+              <input type="text" name="number" id="number" class="input-large conference-number" placeholder="Number, eg (919986410895)">
+              <button type="submit" class="btn conference-button">Put me into conference</button>
           </form>
-          <div class="error"></div>
-          <p>Currently Talking</p>
+          <div class="conference-message">
+              <div class="error"></div>
+          </div>
+            <div class="conference-head"></div>
+            
           <ul class="nav nav-pills nav-stacked profiles">
-              <li><img class="circular" src="static/image/profiles/1.png"/> +919986410895 </li>
           </ul>
           
         </div>
-        <div class="span6">
+        <!--div class="span6">
           <h2>In call actions</h2>
-          <p>Donec id elit non mi porta gravida at eget metus. Fusce dapibus, tellus ac cursus commodo, tortor mauris condimentum nibh, ut fermentum massa justo sit amet risus. Etiam porta sem malesuada magna mollis euismod. Donec sed odio dui. </p>
-          
-       </div>
+          <p> Enter you number and control your own call!</p>
+          <form class="call form form-inline">
+              <input type="text" name="number" id="number" class="input-large" placeholder="Number, eg (919986410895)">
+              <button type="submit" class="btn">Shoot me a call!</button>
+          </form>
+          <div class="call-message">
+              <div class="call-error"></div>
+          </div>
+       </div--->
       </div>
     </div> <!-- /container -->
 
     <script type="text/javascript">
+        $(document).ready(function(){
+          $.ajax({
+                url: "conference/members/",
+                type: "GET",
+                cache: false,
+                success: function (data) {
+                    var numbers = $.parseJSON(data);
+                    profileHTML = '';
+                    $('.conference-message').hide();
+                    if (numbers.length == 0) {
+                        $('conference-head').hide();
+                        profileHTML = '<p>Conference is empty, get some activity going!</p>';
+                        $('.profiles').html(profileHTML);
+                        return false
+                    }
+                    else {
+                      $('conference-head').html('<p>Currently Talking</p>');
+                    }
+                        
+                    $.each(numbers, function(index, number) {
+                        profileHTML = profileHTML + constructProfile(number);
+                    });
+                    $('.profiles').html(profileHTML);
+                }
+            });
+        });
+
         function constructProfile(number) {
-            var profile = '<li><img class="circular" src="static/image/profiles/2.png"/>' + number + '</li>';
+            var profile = '<li><img class="circular" src="static/image/profiles/2.png"/>' + number + '<img src="static/image/blinking_green_light.gif"/></li>';
             return profile;
         }
         
-        var conferenceURL = "http://pycon.plivo.com/"
-
         var pusher = new Pusher('95335b448c179218fbfa');
         var channel = pusher.subscribe('pycon.plivo');
         channel.bind('show_members', function(data) {
+            $('.conference-number').val('');
+            $('.conference-button').attr("disabled", false);
             var numbers = $.parseJSON(data);
             profileHTML = '';
+            $('.conference-message').hide();
+            if (numbers.length == 0) {
+                profileHTML = '<p>Conference is empty, get some activity going!</p>';
+                $('.profiles').html(profileHTML);
+                return false
+            }
+                
             $.each(numbers, function(index, number) {
                 profileHTML = profileHTML + constructProfile(number);
             });
@@ -104,10 +146,11 @@
         });
 
         $('.conference').submit(function() {
+            $('.conference-button').attr("disabled", true);
             var data = $(this).serialize();
             number = $('input[name=number]').val();
             if (number.match(/^\s*$/)) {
-              $('.error').replaceWith('<div class="alert alert-error">Please enter a Number or a SIP URI</div>').hide().fadeIn(1500);
+              $('.error').html('<div class="alert alert-error">Please enter a Number or a SIP URI</div>').hide().fadeIn('slow');
               return false;
             }
             $.ajax({
@@ -115,14 +158,58 @@
                 type: "GET",
                 data: data,
                 cache: false,
-                success: function (jsonData) {
-                    alert(jsonData);
-                    var data = $.parseJSON(jsonData);
-                    alert(data);
-                }
-            });
+                success: function (confData) {
+                    for (property in confData) {
+                        if (property == 'error') {
+                          var msg = confData[property];
+                          var html = '<div class="alert alert-warning">' + msg + '</div>';
+                          $('.error').html(html).hide().fadeIn('slow');
+                        }
+                        else {
+                          var msg = 'Calling ' + number;
+                          var html = '<div class="alert alert-warning">' + msg + '</div>';
+                          $('.error').html(html).hide().fadeIn('slow');
+                        }
+                      }
+                    $('.conference-message').show();
+                    //var data = $.parseJSON(jsonData);
+                    }
+                });
             return false;
           });
+
+        $('.call').submit(function() {
+            var data = $(this).serialize();
+            number = $('input[name=number]').val();
+            if (number.match(/^\s*$/)) {
+              $('.call-error').html('<div class="alert alert-error">Please enter a Number or a SIP URI</div>').hide().fadeIn('slow');
+              return false;
+            }
+            $.ajax({
+                url: "call/",
+                type: "GET",
+                data: data,
+                cache: false,
+                success: function (callData) {
+                    for (property in callData) {
+                        if (property == 'error') {
+                          var msg = callData[property];
+                          var html = '<div class="alert alert-warning">' + msg + '</div>';
+                          $('.call-error').html(html).hide().fadeIn('slow');
+                        }
+                        else {
+                          var msg = 'Calling ' + number;
+                          var html = '<div class="alert alert-warning">' + msg + '</div>';
+                          $('.call-error').html(html).hide().fadeIn('slow');
+                        }
+                      }
+                    $('.call-message').show();
+                    //var data = $.parseJSON(jsonData);
+                    }
+                });
+            return false;
+          });
+ 
     </script>
 
 </body>

@@ -18,6 +18,7 @@ BASE_URL = 'http://pycon.plivo.com/'
 PLIVO_NUMBER = '18554075486'
 
 CONFERENCE_NAME = 'pycon'
+PLIVO_MUSIC = 'http://s3.amazonaws.com/plivocloud/music.mp3'
 
 def get_plivo_connection():
     p = plivo.RestAPI(PLIVO_AUTH_ID, PLIVO_AUTH_TOKEN)
@@ -42,6 +43,13 @@ def make_json_response(data):
     response.headers['Content-Type'] = 'application/json'
     return response
 
+@app.route('/call/', methods=['GET', 'POST'])
+def call(number=None):
+    number = number or request.args.get('number')
+    if not number:
+        response = make_json_response({'error':'No number'})
+        return response
+
 @app.route('/conference/', methods=['GET', 'POST'])
 def conference(number=None):
     number = number or request.args.get('number')
@@ -49,18 +57,21 @@ def conference(number=None):
         response = make_json_response({'error':'No number'})
         return response
 
-    #number = clean_phone_number(number)
+    members = get_conference_members(CONFERENCE_NAME)
+    for member in members:
+        if number == member['to']:
+            response = make_json_response({'error':'Already in conference'})
+            return response
 
     call_params = {
             'to':number,
             'from':PLIVO_NUMBER,
-            'answer_url':BASE_URL + '/response/conf/',
+            'answer_url':BASE_URL + 'response/conf/',
             'answer_method':'GET', 
             }
 
     p = get_plivo_connection()
     status, response = p.make_call(call_params)
-    import pdb;pdb.set_trace()
 
     if status == 201:
         response = make_json_response({'success': True})
@@ -72,7 +83,7 @@ def conference(number=None):
 @app.route('/response/conf/', methods=['GET', 'POST'])
 def conference_response():
     r = plivo.Response()
-    r.addSpeak('Hi, welcome to plivo realtime conference. You\'ll be placed into conference right away.', voice='WOMAN')
+    r.addSpeak('Welcome to the world of top class conferencing! You are being placed into a conference.', voice='WOMAN')
     conference_params = {
             'enterSound':'beep:1',
             'waitSound':BASE_URL + 'response/conf/music/',
@@ -89,22 +100,62 @@ def conference_response():
 
 @app.route('/response/conf/callback/', methods=['GET', 'POST'])
 def conference_callback():
-    pr = get_pusher_connection()
-    p = get_plivo_connection()
+    event = request.args.get('Event') or None
 
-    conference_params = {
-            'conference_name': CONFERENCE_NAME,
+    if event == 'ConferenceEnter' or event == 'ConferenceExit':
+        pr = get_pusher_connection()
+
+        members = get_conference_members(CONFERENCE_NAME)
+        numbers = []
+
+        for member in members:
+            numbers.append(member['to'])
+
+        pr['pycon.plivo'].trigger('show_members', json.dumps(numbers))
+        response = make_json_response({'success': True})
+        return response
+
+    response = make_json_response({'error':True})
+    return response
+
+
+@app.route('/response/conf/music/', methods=['GET', 'POST'])
+def conference_music():
+    r = plivo.Response()
+    play_parameters = {
+            'loop':'50',
             }
-    status, response = p.get_live_conference(conference_params)
-    members = response['members']
-    print members
+    r.addPlay(PLIVO_MUSIC, **play_parameters)
+    response = make_response(r.to_xml())
+    response.headers['Content-Type'] = 'text/xml'
+    return response
+
+@app.route('/conference/members/', methods=['GET', 'POST'])
+def conference_members():
+    pr = get_pusher_connection()
+
+    members = get_conference_members(CONFERENCE_NAME)
 
     numbers = []
     for member in members:
         numbers.append(member['to'])
 
-    pr['pycon.plivo'].trigger('show_members', json.dumps(numbers))
+    response = make_json_response(json.dumps(numbers))
+    return response
 
-    return ''
 
-app.run('0.0.0.0',port=5000)
+def get_conference_members(conference_name):
+    p = get_plivo_connection()
+    conference_params = {
+            'conference_name': CONFERENCE_NAME,
+            }
+    status, response = p.get_live_conference(conference_params)
+    try:
+        members = response['members']
+    except:
+        members = []
+
+    return members
+
+
+app.run('127.0.0.1', port=8000)
