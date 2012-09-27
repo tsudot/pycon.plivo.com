@@ -54,7 +54,7 @@
 
     <div class="row">
         <div class="span12 uber-heading">
-          <h1>Introducing telephony</h1>
+          <h1>Introducing telephony to the web!</h1>
         </div>
       </div>
 
@@ -151,6 +151,7 @@
             number = $('input[name=number]').val();
             if (number.match(/^\s*$/)) {
               $('.error').html('<div class="alert alert-error">Please enter a Number or a SIP URI</div>').hide().fadeIn('slow');
+            $('.conference-button').attr("disabled", false);
               return false;
             }
             $.ajax({
@@ -175,6 +176,7 @@
                     //var data = $.parseJSON(jsonData);
                     }
                 });
+            $('.conference-button').attr("disabled", false);
             return false;
           });
 
