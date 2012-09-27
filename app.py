@@ -77,7 +77,7 @@ def conference(number=None):
         response = make_json_response({'success': True})
         return response
 
-    response = make_json_response({'error':True})
+    response = make_json_response({'error':'Call cannot be established, please verify your number'})
     return response
 
 @app.route('/response/conf/', methods=['GET', 'POST'])
