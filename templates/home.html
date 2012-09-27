@@ -122,6 +122,10 @@
             var profile = '<li><img class="circular" src="static/image/profiles/2.png"/>' + number + '<img src="static/image/blinking_green_light.gif"/></li>';
             return profile;
         }
+
+        function isNumeric(n) {
+          return !isNaN(parseFloat(n)) && isFinite(n);
+        }
         
         var pusher = new Pusher('95335b448c179218fbfa');
         var channel = pusher.subscribe('pycon.plivo');
@@ -153,6 +157,15 @@
               $('.error').html('<div class="alert alert-error">Please enter a Number or a SIP URI</div>').hide().fadeIn('slow');
             $('.conference-button').attr("disabled", false);
               return false;
+            }
+            if ((number.indexOf("@") >=0) || (isNumeric(number))) {
+                var msg = '';
+            }
+            else{
+              $('.error').html('<div class="alert alert-warning">Please enter a valid number or a SIP URI</div>').hide().fadeIn('slow');
+                $('.conference-message').show();
+                $('.conference-button').attr("disabled", false);
+                return false;
             }
             $.ajax({
                 url: "conference/",
