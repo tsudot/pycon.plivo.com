@@ -12,7 +12,6 @@ import pusher
 from utils import clean_phone_number
 
 app = Flask(__name__)
-app.debug = True
 
 BASE_URL = 'http://pycon.plivo.com/'
 PLIVO_NUMBER = '18554075486'
