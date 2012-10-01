@@ -36,6 +36,12 @@
       <div class="navbar-inner">
         <div class="container">
           <a class="brand" href="http://plivo.com"><img src="static/image/logo.png"/></a>
+          <div class="nav-collapse collapse">
+            <ul class="nav">
+              <li><a href="#apps">Apps</a></li>
+              <li><a href="#contest">Contest</a></li>
+            </ul>
+        </div>
         </div>
       </div>
     </div>
@@ -52,8 +58,8 @@
         </div>
       </div>
 
-    <div class="row">
-        <div class="span12 uber-heading">
+    <div class="row" id="apps">
+        <div class="span8 uber-heading offset2">
           <h1>Introducing telephony to the web!</h1>
         </div>
       </div>
@@ -76,22 +82,59 @@
           </ul>
           
         </div>
-        <!--div class="span6">
+        <div class="span6">
           <h2>In call actions</h2>
-          <p> Enter you number and control your own call!</p>
+          <p> Enter you number in the text field below. Get a call and tehn use our TTS engine to play a message in the call. Try it out live!</p>
           <form class="call form form-inline">
-              <input type="text" name="number" id="number" class="input-large" placeholder="Number, eg (919986410895)">
+              <input type="text" name="number_call" id="number_call" class="input-large" placeholder="Number, eg (919986410895)">
               <button type="submit" class="btn">Shoot me a call!</button>
           </form>
           <div class="call-message">
               <div class="call-error"></div>
           </div>
-       </div--->
+              <form class="tts-speak form form-inline"> 
+                  <input type="text" name="tts_msg" id="tts_msg" class="input-large">
+                  <button type="submit" class="btn">Speak</button>
+              </form>
+       </div>
       </div>
+      <hr/>
+
+      <!-- Contest -->
+        <div class="row" id="contest">
+            <div class="span8 uber-heading offset2">
+              <h1>Plivo app developement contest</h1>
+            </div>
+          </div>
+      <div class="row">
+          <div class="span12">
+              <p>Create compelling telephony apps and win great prizes. The best 5 apps win Rs. 3000 each</p>
+              <p>
+              <h3>What kind of applications?</h3>
+              <ul>
+                  <li>Plivo lets you weave magic with your calls and SMSes through any form of web programming. It can be used to create applications ranging from simple click-to-call buttons to complex conferencing systems.</li>
+                  <li>Click <a href="#apps">here</a> to view sample telephony applications</li>
+                  <li>Visit <a href="http://plivo.com/docs">plivo.com/docs</a> to get a complete idea of the APIs/services that we provide</li>
+              </ul>
+              </p>
+
+              <p>
+              <h3>How to participate?</h3>
+              <ul>
+                  <li>Create your application using Plivo. If you need credits,shoot us a mail pycon[at]plivo[dot]com or visit us at our booth</li>
+                  <li>Host your web apps using heroku or any other service you are comfortable wit. Send us links of both the application and the code(preferably github/bitbucket) to pycon[at]plivo[dot]com by 14th of October, 2012</li>
+                  <li>Results will be published a week after the deadline on this page</li>
+                </ul>
+                </p>
+
+                <p>PLIVO IS HIRING!! visit <a href="http://careers.plivo.com">careers.plivo.com</a> for more details</p>
+
     </div> <!-- /container -->
+
 
     <script type="text/javascript">
         $(document).ready(function(){
+        $('.tts-speak').hide();
           $.ajax({
                 url: "conference/members/",
                 type: "GET",
@@ -117,6 +160,9 @@
                 }
             });
         });
+
+        var number_call = "";
+        var call_uuid = "";
 
         function constructProfile(number) {
             var profile = '<li><img class="circular" src="static/image/profiles/2.png"/>' + number + '<img src="static/image/blinking_green_light.gif"/></li>';
@@ -145,9 +191,33 @@
                 profileHTML = profileHTML + constructProfile(number);
             });
             $('.profiles').html(profileHTML);
-            // do something
-            // update member list with new values
         });
+
+        channel.bind('in_call', function(calldata) {
+            var numbersCall = $.parseJSON(calldata);
+            for (property in numbersCall) {
+                if (property == number_call) {
+                    call_uuid = numbersCall[property];
+                    $('.tts-speak').show();
+                }
+            }
+        });
+
+        $('.tts-speak').submit(function() {
+                var data=$(this).serialize();
+                data = data + '&call_uuid=' + call_uuid;
+                 $.ajax({
+                    url: "call/play/",
+                    type: "GET",
+                    data: data,
+                    cache: false,
+                    success: function (speakData) {
+                        var data = $.parseJSON(speakData);
+                        }
+                });
+                 return false;
+             });
+
 
         $('.conference').submit(function() {
             $('.conference-button').attr("disabled", true);
@@ -195,8 +265,8 @@
 
         $('.call').submit(function() {
             var data = $(this).serialize();
-            number = $('input[name=number]').val();
-            if (number.match(/^\s*$/)) {
+            number_call = $('input[name=number_call]').val();
+            if (number_call.match(/^\s*$/)) {
               $('.call-error').html('<div class="alert alert-error">Please enter a Number or a SIP URI</div>').hide().fadeIn('slow');
               return false;
             }
@@ -213,7 +283,7 @@
                           $('.call-error').html(html).hide().fadeIn('slow');
                         }
                         else {
-                          var msg = 'Calling ' + number;
+                          var msg = 'Calling ' + number_call;
                           var html = '<div class="alert alert-warning">' + msg + '</div>';
                           $('.call-error').html(html).hide().fadeIn('slow');
                         }

@@ -29,9 +29,18 @@ def get_pusher_connection():
                         secret=PUSHER_SECRET)
     return pr
 
+def get_redis_connection():
+    rd = redis.StrictRedis(host='localhost',
+                port=6379)
+    return rd
+
 @app.errorhandler(404)
 def page_not_found(error):
     return render_template('not_found.html')
+
+@app.errorhandler(500)
+def page_not_found(error):
+    return render_template('custom_500.html')
 
 @app.route('/', methods=['GET'])
 def index():
@@ -43,11 +52,53 @@ def make_json_response(data):
     return response
 
 @app.route('/call/', methods=['GET', 'POST'])
-def call(number=None):
-    number = number or request.args.get('number')
+def call(number_call=None):
+    number = number_call or request.args.get('number_call')
     if not number:
         response = make_json_response({'error':'No number'})
         return response
+
+    call_params = {
+            'to':number,
+            'from':PLIVO_NUMBER,
+            'ring_url':BASE_URL + 'response/call/ring/',
+            'ring_method':'GET',
+            'answer_url':BASE_URL + 'response/conf/music/',
+            'answer_method':'GET', 
+            }
+
+    p = get_plivo_connection()
+    status, response = p.make_call(call_params)
+
+    if status == 201:
+        response = make_json_response({'success': True})
+        return response
+
+    response = make_json_response({'error':'Call cannot be established, please verify your number'})
+    return response
+
+@app.route('/call/play/', methods=['GET', 'POST'])
+def call_play():
+    call_uuid = request.args.get('call_uuid');
+    tts_msg = request.args.get('tts_msg');
+
+    p = get_plivo_connection()
+    p.speak({'call_uuid':call_uuid, 'text':tts_msg})
+    return ''
+
+
+@app.route('/response/call/ring/', methods=['GET', 'POST'])
+def call_ring():
+    call_uuid = request.args.get('CallUUID')
+    number = request.args.get('To')
+
+    rd = get_redis_connection()
+    rd.set(number, call_uuid)
+
+    number_call_uuid = {number:call_uuid}
+    pr = get_pusher_connection()
+
+    pr['pycon.plivo'].trigger('in_call', json.dumps(number_call_uuid))
 
 @app.route('/conference/', methods=['GET', 'POST'])
 def conference(number=None):
