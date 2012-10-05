@@ -12,6 +12,7 @@ import pusher
 from utils import clean_phone_number
 
 app = Flask(__name__)
+#app.debug = True
 
 BASE_URL = 'http://pycon.plivo.com/'
 PLIVO_NUMBER = '18554075486'
@@ -138,7 +139,6 @@ def conference_response():
             'enterSound':'beep:1',
             'waitSound':BASE_URL + 'response/conf/music/',
             'timeLimit':'8400',
-            'action':BASE_URL + 'response/conf/action/',
             'callbackUrl':BASE_URL + 'response/conf/callback/',
             'callbackMethod':'GET',
             }
@@ -150,22 +150,17 @@ def conference_response():
 
 @app.route('/response/conf/callback/', methods=['GET', 'POST'])
 def conference_callback():
+    """
+    Refresh the list of member on receiving any callback
+    """
     event = request.args.get('Event') or None
 
-    if event == 'ConferenceEnter' or event == 'ConferenceExit':
-        pr = get_pusher_connection()
+    pr = get_pusher_connection()
 
-        members = get_conference_members(CONFERENCE_NAME)
-        numbers = []
+    members = get_conference_members(CONFERENCE_NAME)
 
-        for member in members:
-            numbers.append(member['to'])
-
-        pr['pycon.plivo'].trigger('show_members', json.dumps(numbers))
-        response = make_json_response({'success': True})
-        return response
-
-    response = make_json_response({'error':True})
+    pr['pycon.plivo'].trigger('show_members', json.dumps(members))
+    response = make_json_response({'success': True})
     return response
 
 
@@ -186,13 +181,84 @@ def conference_members():
 
     members = get_conference_members(CONFERENCE_NAME)
 
-    numbers = []
-    for member in members:
-        numbers.append(member['to'])
-
-    response = make_json_response(json.dumps(numbers))
+    response = make_json_response(json.dumps(members))
     return response
 
+@app.route('/conference/kick/', methods=['GET', 'POST'])
+def conference_kick():
+    member_id = request.args.get('member_id')
+
+    p = get_plivo_connection()
+
+    member_params = {
+            'member_id': member_id,
+            'conference_name': CONFERENCE_NAME,
+            'callback_url':BASE_URL + 'response/conf/callback/',
+            'callback_method':'GET',
+            }
+    p.kick_member(member_params)
+    return 'Done'
+
+@app.route('/conference/mute/', methods=['GET', 'POST'])
+def conference_mute():
+    member_id = request.args.get('member_id')
+
+    p = get_plivo_connection()
+
+    member_params = {
+            'member_id': member_id,
+            'conference_name': CONFERENCE_NAME,
+            'callback_url':BASE_URL + 'response/conf/callback/',
+            'callback_method':'GET',
+            }
+    p.mute_member(member_params)
+    return 'Done'
+
+@app.route('/conference/unmute/', methods=['GET', 'POST'])
+def conference_unmute():
+    member_id = request.args.get('member_id')
+
+    p = get_plivo_connection()
+
+    member_params = {
+            'member_id': member_id,
+            'conference_name': CONFERENCE_NAME,
+            'callback_url':BASE_URL + 'response/conf/callback/',
+            'callback_method':'GET',
+            }
+    print p.unmute_member(member_params)
+    return 'Done'
+
+
+@app.route('/conference/deaf/', methods=['GET', 'POST'])
+def conference_deaf():
+    member_id = request.args.get('member_id')
+
+    p = get_plivo_connection()
+
+    member_params = {
+            'member_id': member_id,
+            'conference_name': CONFERENCE_NAME,
+            'callback_url':BASE_URL + 'response/conf/callback/',
+            'callback_method':'GET',
+            }
+    p.deaf_member(member_params)
+    return 'Done'
+
+@app.route('/conference/undeaf/', methods=['GET', 'POST'])
+def conference_undeaf():
+    member_id = request.args.get('member_id')
+
+    p = get_plivo_connection()
+
+    member_params = {
+            'member_id': member_id,
+            'conference_name': CONFERENCE_NAME,
+            'callback_url':BASE_URL + 'response/conf/callback/',
+            'callback_method':'GET',
+            }
+    print p.undeaf_member(member_params)
+    return 'Done'
 
 def get_conference_members(conference_name):
     p = get_plivo_connection()

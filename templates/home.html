@@ -134,7 +134,14 @@
 
     <script type="text/javascript">
         $(document).ready(function(){
-        $('.tts-speak').hide();
+            $('.tts-speak').hide();
+            refreshConferenceList();
+        });
+
+        var number_call = "";
+        var call_uuid = "";
+
+        function refreshConferenceList() {
           $.ajax({
                 url: "conference/members/",
                 type: "GET",
@@ -159,16 +166,105 @@
                     $('.profiles').html(profileHTML);
                 }
             });
-        });
+        }
 
-        var number_call = "";
-        var call_uuid = "";
 
-        function constructProfile(number) {
-            var profile = '<li><img class="circular" src="static/image/profiles/2.png"/>' + number + '<img src="static/image/blinking_green_light.gif"/></li>';
+        function constructProfile(member) {
+            var to_number = member.to;
+            var member_id = member.member_id;
+            var muted = member.muted;
+            var deaf = member.deaf;
+
+            if (muted) {
+                muteHtml = '<a href="#" onclick="javascript:conf_unmute(' + member_id +')">unmute</a>'
+            }
+            else {
+                muteHtml = '<a href="#" onclick="javascript:conf_mute(' + member_id +')">mute</a>'
+            }
+
+            if (deaf) {
+                deafHtml ='<a href="#" onclick="javascript:conf_undeaf(' + member_id +')">undeaf</a>'
+            }
+            else {
+                deafHtml = '<a href="#" onclick="javascript:conf_deaf(' + member_id +')">deaf</a>'
+            }
+
+            var profile = '<li><img class="circular" src="static/image/profiles/2.png"/>' + to_number + '<img src="static/image/blinking_green_light.gif"/><a href="#" onclick="javascript:conf_kick('+ member_id + ')">kick</a>' + muteHtml + deafHtml +'</li>';
+
             return profile;
         }
 
+        function conf_kick(member_id) {
+            var data = "member_id="+member_id;
+             $.ajax({
+                url: "conference/kick/",
+                type: "GET",
+                data: data,
+                cache: false,
+                success: function (kickData) {
+                    var data = $.parseJSON(kickData);
+                    refreshConferenceList();
+                    }
+            });
+        }
+
+        function conf_mute(member_id) {
+            var data = "member_id="+member_id;
+             $.ajax({
+                url: "conference/mute/",
+                type: "GET",
+                data: data,
+                cache: false,
+                success: function (muteData) {
+                    var data = $.parseJSON(muteData);
+                    refreshConferenceList();
+                    }
+            });
+        }
+
+        function conf_unmute(member_id) {
+            var data = "member_id="+member_id;
+             $.ajax({
+                url: "conference/unmute/",
+                type: "GET",
+                data: data,
+                cache: false,
+                success: function (unmuteData) {
+                    var data = $.parseJSON(muteData);
+                    refreshConferenceList();
+                    }
+            });
+        }
+             
+ 
+        function conf_deaf(member_id) {
+            var data = "member_id="+member_id;
+             $.ajax({
+                url: "conference/deaf/",
+                type: "GET",
+                data: data,
+                cache: false,
+                success: function (deafData) {
+                    var data = $.parseJSON(deafData);
+                    refreshConferenceList();
+                    }
+            });
+        }
+            
+        function conf_undeaf(member_id) {
+            var data = "member_id="+member_id;
+             $.ajax({
+                url: "conference/undeaf/",
+                type: "GET",
+                data: data,
+                cache: false,
+                success: function (undeafData) {
+                    var data = $.parseJSON(deafData);
+                    refreshConferenceList();
+                    }
+            });
+        }
+ 
         function isNumeric(n) {
           return !isNaN(parseFloat(n)) && isFinite(n);
         }
@@ -178,17 +274,17 @@
         channel.bind('show_members', function(data) {
             $('.conference-number').val('');
             $('.conference-button').attr("disabled", false);
-            var numbers = $.parseJSON(data);
+            var members = $.parseJSON(data);
             profileHTML = '';
             $('.conference-message').hide();
-            if (numbers.length == 0) {
+            if (members.length == 0) {
                 profileHTML = '<p>Conference is empty, get some activity going!</p>';
                 $('.profiles').html(profileHTML);
                 return false
             }
                 
-            $.each(numbers, function(index, number) {
-                profileHTML = profileHTML + constructProfile(number);
+            $.each(members, function(index, member) {
+                profileHTML = profileHTML + constructProfile(member);
             });
             $('.profiles').html(profileHTML);
         });
